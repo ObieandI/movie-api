@@ -9,8 +9,8 @@ const fileType = require('file-type');
 require('dotenv').config();
 
 
-// const OMDB_API_KEY = process.env.OMDB_API_KEY;
-// const RAPID_API_KEY = process.env.RAPID_API_KEY;
+const OMDB_API_KEY = process.env.OMDB_API_KEY;
+const RAPID_API_KEY = process.env.RAPID_API_KEY;
 
 // Create server
 const server = http.createServer((req, res) => {
@@ -58,7 +58,7 @@ server.listen(5000, () => {
 async function getMovieReview(imdbId, res) {
     try {
         console.log(`Fetching movie review for ID: ${imdbId}`);
-        const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${process.env.OMDB_API_KEY}`);
+        const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
         console.log("Received response from OMDb:", response.data);
         res.statusCode = 200;
         res.end(JSON.stringify(response.data));
@@ -75,7 +75,7 @@ async function getStreamingAvailability(title, res) {
         const response = await axios.get(`https://streaming-availability.p.rapidapi.com/search/basic`, {
             params: { title: title, country: 'us', type: 'movie' },
             headers: {
-                'X-RapidAPI-Key': process.env.RAPID_API_KEY,
+                'X-RapidAPI-Key': RAPID_API_KEY,
                 'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
             }
         });
@@ -99,7 +99,7 @@ async function getPoster(res, imdbId) {
         console.log(`Fetching poster for IMDb ID: ${imdbId}`);
 
         // Fetch movie details from OMDb API
-        const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${process.env.OMDB_API_KEY}`);
+        const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
 
         // Check if a poster URL is available
         const posterUrl = response.data.Poster;
