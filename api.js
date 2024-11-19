@@ -2,6 +2,7 @@ const axios = require('axios');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const multiparty = require('multiparty'); // Adding multiparty for handling form data (addPoster)
 
 dotenv.config();
 
@@ -33,24 +34,6 @@ async function getMovieData(imdbId, res) {
   }
 }
 
-// Get streaming availability for a movie by IMDb ID
-async function getStreamingAvailability(imdbId, res) {
-  try {
-    const response = await axios.get('https://streaming-availability.p.rapidapi.com/v2/get/basic', {
-      headers: {
-        'X-RapidAPI-Key': STREAM_API_KEY,
-        'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com',
-      },
-      params: { imdb_id: imdbId },
-    });
-    res.statusCode = 200;
-    res.end(JSON.stringify(response.data));
-  } catch (error) {
-    res.statusCode = 500;
-    res.end(JSON.stringify({ error: 'Failed to fetch streaming availability' }));
-  }
-}
-
 // Get poster for a movie by IMDb ID
 async function getPoster(imdbId, res) {
   try {
@@ -64,67 +47,76 @@ async function getPoster(imdbId, res) {
     // Set the appropriate headers for the image
     res.setHeader('Content-Type', 'image/jpeg');
     res.statusCode = 200;
-    res.end(imageResponse.data);  // Send image data as response
+    res.end(imageResponse.data);
   } catch (error) {
     res.statusCode = 500;
     res.end(JSON.stringify({ error: 'Failed to fetch poster' }));
   }
 }
 
-// Handle file uploads manually (without formidable)
-function uploadPoster(req, res, imdbId) {
-  const boundary = req.headers['content-type'].split('boundary=')[1];
-  const chunks = [];
+// Handle file uploads manually using multiparty
+function uploadPoster(req, res) {
+    const imdbId = req.params?.imdbId || req.url.split('/')[3];
 
-  req.on('data', chunk => {
-    chunks.push(chunk); // Collect the incoming data chunks
-  });
-
-  req.on('end', () => {
-    // Convert the buffer data into a UTF-8 string (this was the issue before!)
-    const body = Buffer.concat(chunks).toString('utf8'); 
-
-    // Split the body by the boundary delimiter
-    const delimiter = `--${boundary}`;
-    const parts = body.split(delimiter);
-
-    const filePart = parts[1];  // The second part is the file data
-
-    // Extract file headers and data from the file part
-    const fileHeaders = filePart.slice(0, filePart.indexOf('\r\n\r\n')).toString();
-    const fileData = filePart.slice(filePart.indexOf('\r\n\r\n') + 4, filePart.length - 2); // Extract file content
-
-    // Extract the file name from the headers
-    const fileName = fileHeaders.match(/filename="(.+)"/)[1];
-
-    // Define the directory to store the uploaded files
-    const uploadDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);  // Create the directory if it doesn't exist
+    // Ensure imdbId is provided
+    if (!imdbId) {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: 'IMDb ID is required.' }));
     }
 
-    // Save the file with the IMDb ID to avoid name collisions
-    const filePath = path.join(uploadDir, `${imdbId}_${fileName}`);
-    fs.writeFileSync(filePath, fileData);  // Save the file
+    // Handle multipart form data (file upload)
+    const form = new multiparty.Form();
 
-    // Send back a success response with the file URL
-    res.statusCode = 200;
-    res.end(JSON.stringify({
-      message: `Poster uploaded for movie with IMDb ID ${imdbId}`,
-      posterUrl: `http://127.0.0.1:5000/uploads/${imdbId}_${fileName}`,
-    }));
-  });
+    form.parse(req, (err, fields, files) => {
+        if (err) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: 'Failed to process the file upload.' }));
+        }
 
-  req.on('error', err => {
-    res.statusCode = 500;
-    res.end(JSON.stringify({ error: 'Failed to process upload' }));
-  });
+        const file = files.file[0];
+        if (!file) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: 'No file uploaded.' }));
+        }
+
+        const extname = path.extname(file.originalFilename).toLowerCase();
+        const allowedExtensions = ['.png'];
+        if (!allowedExtensions.includes(extname)) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: 'Invalid file type. Only .png files are allowed.' }));
+        }
+
+        // Save the file as .png (this helped with testing)
+        const filePath = path.join(__dirname, 'uploads', `${imdbId}_poster.png`);
+        const uploadDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir);
+        }
+
+        fs.rename(file.path, filePath, (err) => {
+            if (err) {
+                res.statusCode = 500;
+                return res.end(JSON.stringify({ error: 'Failed to save the file.' }));
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/html');
+            res.end(`
+                <html>
+                    <body>
+                        <h1>Poster uploaded successfully!</h1>
+                        <p>File saved at: ${filePath}</p>
+                        <img src="file://${filePath}" alt="Uploaded Poster" style="max-width: 100%; height: auto;">
+                    </body>
+                </html>
+            `);
+        });
+    });
 }
 
-module.exports = { 
-  searchMovie, 
-  getMovieData, 
-  getStreamingAvailability, 
-  getPoster, 
-  uploadPoster 
+module.exports = {
+  searchMovie,
+  getMovieData,
+  getPoster,
+  uploadPoster,
 };

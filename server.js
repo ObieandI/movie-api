@@ -1,6 +1,6 @@
 const http = require('http');
 const url = require('url');
-const { uploadPoster, searchMovie, getMovieData, getPoster, getStreamingAvailability } = require('./api');
+const { uploadPoster, searchMovie, getMovieData, getPoster} = require('./api');
 const hostname = '127.0.0.1';
 const port = 5000;
 
@@ -17,9 +17,6 @@ const server = http.createServer((req, res) => {
   } else if (method === 'GET' && pathname.startsWith('/movies/data/')) {
     const imdbId = pathname.split('/movies/data/')[1];
     getMovieData(imdbId, res);
-  } else if (method === 'GET' && pathname.startsWith('/movies/streaming/')) {
-    const imdbId = pathname.split('/movies/streaming/')[1];
-    getStreamingAvailability(imdbId, res);
   } else if (method === 'GET' && pathname.startsWith('/posters/')) {
     const imdbId = pathname.split('/posters/')[1];
     getPoster(imdbId, res);
