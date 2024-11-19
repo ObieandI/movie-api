@@ -9,7 +9,7 @@ const hostname = '127.0.0.1';
 const port = 5000;
 
 const server = http.createServer((req, res) => {
-  const { pathname } = url.parse(req.url, true);
+  const { pathname } = url.parse(req.url, true); // Removed 'query' as it's not used
   const method = req.method;
 
   // Set CORS headers for cross-origin requests
@@ -21,7 +21,7 @@ const server = http.createServer((req, res) => {
   if (method === 'GET' && pathname.startsWith('/movies/search/')) {
     const title = pathname.split('/movies/search/')[1];
     searchMovie(title, res);
-  }
+  } 
   else if (method === 'GET' && pathname.startsWith('/movies/data/')) {
     const imdbId = pathname.split('/movies/data/')[1];
     getMovieData(imdbId, res);

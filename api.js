@@ -48,12 +48,20 @@ async function getStreamingAvailability(imdbId) {
   }
 
 // Get poster for a movie by IMDb ID
+
 async function getPoster(imdbId, res) {
   try {
+    // Fetch movie data from OMDb API
     const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
     const posterUrl = response.data.Poster;
+
+    // Fetch the image using the posterUrl
+    const imageResponse = await axios.get(posterUrl, { responseType: 'arraybuffer' });
+    
+    // Set the appropriate headers for the image
+    res.setHeader('Content-Type', 'image/jpeg');
     res.statusCode = 200;
-    res.end(JSON.stringify({ posterUrl }));
+    res.end(imageResponse.data);  // Send image data as response
   } catch (error) {
     res.statusCode = 500;
     res.end(JSON.stringify({ error: 'Failed to fetch poster' }));
@@ -69,4 +77,4 @@ function uploadPoster(imdbId, req, res) {
 
   
 
-module.exports = { searchMovie, getMovieData, getPoster, uploadPoster };
+module.exports = { searchMovie, getMovieData, getStreamingAvailability, getPoster, uploadPoster };
