@@ -45,14 +45,12 @@
     </div>
 
     <script>
-        const baseURL = 'http://54.79.30.138:5000';
-
-        // const baseURL = 'http://localhost:3000';
+        const baseURL = 'http://127.0.0.1:5000'; // For local testing (adjust to the deployed baseURL for remote testing)
 
         // Get Movie Review by IMDb ID
         function getMovieReview() {
             const imdbId = document.getElementById('reviewImdbId').value;
-            fetch(`${baseURL}/movies/data/${imdbId}`)
+            fetch(`${baseURL}/movies/data/${imdbId}`)  // Use the /movies/data/{imdbId} endpoint
                 .then(response => response.json())
                 .then(data => document.getElementById('reviewResult').textContent = JSON.stringify(data, null, 2))
                 .catch(error => console.error('Error:', error));
@@ -61,7 +59,7 @@
         // Get Streaming Availability by Title
         function getStreamingAvailability() {
             const title = document.getElementById('streamingTitle').value;
-            fetch(`${baseURL}/movies/search/${title}`)
+            fetch(`${baseURL}/movies/search/${title}`)  // Use the /movies/search/{title} endpoint
                 .then(response => response.json())
                 .then(data => document.getElementById('streamingResult').textContent = JSON.stringify(data, null, 2))
                 .catch(error => console.error('Error:', error));
@@ -82,7 +80,7 @@
 
             formData.append('file', fileInput.files[0]);
 
-            fetch(`${baseURL}/posters/add/${imdbId}`, {
+            fetch(`${baseURL}/posters/add/${imdbId}`, {  // Use the /posters/add/{imdbId} endpoint
                 method: 'POST',
                 body: formData
             })
@@ -100,14 +98,14 @@
         // Get Poster by IMDb ID
         function getPoster() {
             const imdbId = document.getElementById('getPosterImdbId').value;
-            fetch(`${baseURL}/posters/${imdbId}`)
+            fetch(`${baseURL}/posters/${imdbId}`)  // Use the /posters/{imdbId} endpoint
                 .then(response => {
                     if (response.ok) {
-                        document.getElementById('posterImage').src = `${baseURL}/posters/${imdbId}`;
-                        document.getElementById('posterImage').style.display = "block";
+                        document.getElementById('posterImage').src = `${baseURL}/posters/${imdbId}`;  // Set the image source
+                        document.getElementById('posterImage').style.display = "block";  // Display the image
                         document.getElementById('posterImage').alt = "Poster Image";
                     } else {
-                        document.getElementById('posterImage').style.display = "none";
+                        document.getElementById('posterImage').style.display = "none";  // Hide the image if not found
                         alert("Poster not found");
                     }
                 })
