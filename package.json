@@ -13,7 +13,10 @@
     "axios": "^1.7.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "file-type": "^16.5.3",
     "fs": "^0.0.1-security",
+    "image-type": "^5.2.0",
+    "multiparty": "^4.2.3",
     "path": "^0.12.7"
   }
 }
