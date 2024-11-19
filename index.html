@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Data Display</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Movie Data Display</h1>
+
+        <!-- Movie Review Section -->
+        <div class="section">
+            <h3>Get Movie Review by IMDb ID</h3>
+            <input type="text" id="reviewImdbId" placeholder="Enter IMDb ID">
+            <button onclick="getMovieReview()">Search</button>
+            <pre id="reviewResult"></pre>
+        </div>
+
+        <!-- Streaming Availability Section -->
+        <div class="section">
+            <h3>Get Streaming Availability by Title</h3>
+            <input type="text" id="streamingTitle" placeholder="Enter Movie Title">
+            <button onclick="getStreamingAvailability()">Search</button>
+            <pre id="streamingResult"></pre>
+        </div>
+
+        <!-- Upload Poster Section -->
+        <div class="section">
+            <h3>Upload Poster for a Movie</h3>
+            <input type="text" id="posterImdbId" placeholder="Enter IMDb ID">
+            <input type="file" id="posterFile">
+            <button onclick="uploadPoster()">Upload Poster</button>
+            <pre id="uploadResult"></pre>
+        </div>
+
+        <!-- Get Poster Section -->
+        <div class="section">
+            <h3>Get Poster by IMDb ID</h3>
+            <input type="text" id="getPosterImdbId" placeholder="Enter IMDb ID">
+            <button onclick="getPoster()">Search</button>
+            <img id="posterImage" src="" alt="Poster will appear here" style="max-width: 200px; display: none;">
+        </div>
+    </div>
+
+    <script>
+        const baseURL = 'http://54.79.30.138:5000';
+
+        // const baseURL = 'http://localhost:3000';
+
+        // Get Movie Review by IMDb ID
+        function getMovieReview() {
+            const imdbId = document.getElementById('reviewImdbId').value;
+            fetch(`${baseURL}/movies/data/${imdbId}`)
+                .then(response => response.json())
+                .then(data => document.getElementById('reviewResult').textContent = JSON.stringify(data, null, 2))
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Get Streaming Availability by Title
+        function getStreamingAvailability() {
+            const title = document.getElementById('streamingTitle').value;
+            fetch(`${baseURL}/movies/search/${title}`)
+                .then(response => response.json())
+                .then(data => document.getElementById('streamingResult').textContent = JSON.stringify(data, null, 2))
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Upload Poster
+        function uploadPoster() {
+            const imdbId = document.getElementById('posterImdbId').value;
+            const fileInput = document.getElementById('posterFile');
+            const formData = new FormData();
+
+            console.log("IMDb ID:", imdbId);  // Log the IMDb ID
+            if (fileInput.files.length > 0) {
+                console.log("Selected File:", fileInput.files[0]);  // Log the selected file
+            } else {
+                console.log("No file selected.");  // Log if no file is selected
+            }
+
+            formData.append('file', fileInput.files[0]);
+
+            fetch(`${baseURL}/posters/add/${imdbId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log("Response Status:", response.status);  // Log the response status
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('uploadResult').textContent = JSON.stringify(data, null, 2);
+                console.log("Upload Result:", data);  // Log the result data
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Get Poster by IMDb ID
+        function getPoster() {
+            const imdbId = document.getElementById('getPosterImdbId').value;
+            fetch(`${baseURL}/posters/${imdbId}`)
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('posterImage').src = `${baseURL}/posters/${imdbId}`;
+                        document.getElementById('posterImage').style.display = "block";
+                        document.getElementById('posterImage').alt = "Poster Image";
+                    } else {
+                        document.getElementById('posterImage').style.display = "none";
+                        alert("Poster not found");
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
