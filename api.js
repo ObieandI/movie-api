@@ -12,39 +12,52 @@ const STREAM_API_KEY = process.env.STREAM_API_KEY;
 
 // Search movie by title
 async function searchMovie(title, res) {
-  try {
-    const response = await axios.get(`http://www.omdbapi.com/?s=${title}&apikey=${OMDB_API_KEY}`);
-    res.statusCode = 200;
-    res.end(JSON.stringify(response.data));
-  } catch (error) {
-    res.statusCode = 500;
-    res.end(JSON.stringify({ error: 'Failed to fetch movie data' }));
+    try {
+      const response = await axios.get(`http://www.omdbapi.com/?s=${title}&apikey=${OMDB_API_KEY}`);
+  
+      if (!title) {
+        res.statusCode = 400;  // Bad Request if IMDb ID is missing
+        return res.end(JSON.stringify({ error: 'A title is required' }));
+      }
+
+      if (response.data.Response === "False") {
+        // Movie not found, return 400
+        res.statusCode = 404;
+        return res.end(JSON.stringify({ error: 'Movie not found' }));
+      }
+  
+      res.statusCode = 200;
+      res.end(JSON.stringify(response.data));
+    } catch (error) {
+      res.statusCode = 500;
+      res.end(JSON.stringify({ error: 'Failed to fetch movie data' }));
+    }
   }
-}
 
 // Get movie data by IMDb ID
 async function getMovieData(imdbId, res) {
-  try {
-    const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
-    res.statusCode = 200;
-    res.end(JSON.stringify(response.data));
-  } catch (error) {
-    res.statusCode = 500;
-    res.end(JSON.stringify({ error: 'Failed to fetch movie data' }));
+    if (!imdbId) {
+      res.statusCode = 400;
+      return res.end(JSON.stringify({ error: 'IMDb ID is required' }));
+    }
+  
+    try {
+      const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
+      res.statusCode = 200;
+      res.end(JSON.stringify(response.data));
+    } catch (error) {
+      res.statusCode = 500; 
+      res.end(JSON.stringify({ error: 'Failed to fetch movie data' }));
+    }
   }
-}
 
 // Get poster for a movie by IMDb ID
 async function getPoster(imdbId, res) {
   try {
-    // Fetch movie data from OMDb API
     const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
     const posterUrl = response.data.Poster;
-
-    // Fetch the image using the posterUrl
     const imageResponse = await axios.get(posterUrl, { responseType: 'arraybuffer' });
 
-    // Set the appropriate headers for the image
     res.setHeader('Content-Type', 'image/jpeg');
     res.statusCode = 200;
     res.end(imageResponse.data);
@@ -54,17 +67,15 @@ async function getPoster(imdbId, res) {
   }
 }
 
-// Handle file uploads manually using multiparty
+//Upload poster function
 function uploadPoster(req, res) {
     const imdbId = req.params?.imdbId || req.url.split('/')[3];
 
-    // Ensure imdbId is provided
     if (!imdbId) {
         res.statusCode = 400;
         return res.end(JSON.stringify({ error: 'IMDb ID is required.' }));
     }
 
-    // Handle multipart form data (file upload)
     const form = new multiparty.Form();
 
     form.parse(req, (err, fields, files) => {
@@ -86,7 +97,6 @@ function uploadPoster(req, res) {
             return res.end(JSON.stringify({ error: 'Invalid file type. Only .png files are allowed.' }));
         }
 
-        // Save the file as .png (this helped with testing)
         const filePath = path.join(__dirname, 'uploads', `${imdbId}_poster.png`);
         const uploadDir = path.join(__dirname, 'uploads');
         if (!fs.existsSync(uploadDir)) {
@@ -114,6 +124,7 @@ function uploadPoster(req, res) {
     });
 }
 
+//Exported functions
 module.exports = {
   searchMovie,
   getMovieData,

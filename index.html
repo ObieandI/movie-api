@@ -20,12 +20,12 @@
             <pre id="reviewResult"></pre>
         </div>
 
-        <!-- Streaming Availability Section -->
+        <!-- Movie Search by Title Section -->
         <div class="section">
-            <h3>Get Streaming Availability by Title</h3>
-            <input type="text" id="streamingTitle" placeholder="Enter Movie Title">
-            <button onclick="getStreamingAvailability()">Search</button>
-            <pre id="streamingResult"></pre>
+            <h3>Get Movie Details by Title</h3>
+            <input type="text" id="movieTitle" placeholder="Enter Movie Title">
+            <button onclick="searchMovie()">Search</button>
+            <pre id="movieDetailsResult"></pre>
         </div>
 
         <!-- Upload Poster Section -->
@@ -59,13 +59,22 @@
                 .catch(error => console.error('Error:', error));
         }
 
-        // Get Streaming Availability by Title
-        function getStreamingAvailability() {
-            const title = document.getElementById('streamingTitle').value;
-            fetch(`${baseURL}/movies/search/${title}`)  // Use the /movies/search/{title} endpoint
+        // Search Movie by Title
+        function searchMovie() {
+            const title = document.getElementById('movieTitle').value;
+            fetch(`${baseURL}/movies/search/${title}`)
                 .then(response => response.json())
-                .then(data => document.getElementById('streamingResult').textContent = JSON.stringify(data, null, 2))
-                .catch(error => console.error('Error:', error));
+                .then(data => {
+                    if (data.Response === "False") {
+                        document.getElementById('movieDetailsResult').textContent = "Movie not found. Please enter a valid title.";
+                    } else {
+                        document.getElementById('movieDetailsResult').textContent = JSON.stringify(data, null, 2);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('movieDetailsResult').textContent = "Error fetching movie data. Please try again.";
+                    console.error('Error:', error);
+                });
         }
 
         // Get Poster by IMDb ID
@@ -92,7 +101,7 @@
             const formData = new FormData();
 
             if (fileInput.files.length > 0) {
-                formData.append('file', fileInput.files[0]);  // Append the file to the formData
+                formData.append('file', fileInput.files[0]);
 
                 fetch(`${baseURL}/posters/add/${imdbId}`, {
                     method: 'POST',

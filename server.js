@@ -1,6 +1,6 @@
 const http = require('http');
 const url = require('url');
-const { uploadPoster, searchMovie, getMovieData, getPoster} = require('./api');
+const { uploadPoster, searchMovie, getMovieData, getPoster } = require('./api');
 const hostname = '127.0.0.1';
 const port = 5000;
 
