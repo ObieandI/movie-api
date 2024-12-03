@@ -12,48 +12,105 @@ require('dotenv').config();
 const OMDB_API_KEY = process.env.OMDB_API_KEY;
 const RAPID_API_KEY = process.env.RAPID_API_KEY;
 
-// Create server
 const server = http.createServer((req, res) => {
     const reqUrl = url.parse(req.url, true);
+    console.log("Request URL:", reqUrl.pathname); // Log the full URL path
+
+    // Set CORS headers for all requests
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Content-Type', 'application/json');
 
-
-    if (method == "OPTIONS") {
+    // Handle OPTIONS request (CORS Preflight)
+    if (req.method === "OPTIONS") {
         res.writeHead(200, {
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "OPTIONS, DELETE",
-          });
-          res.end();
-        }
-    
-        if (reqUrl.pathname.startsWith('/movies/search/') && req.method === 'GET') {
-            const title = reqUrl.pathname.split('/').pop();
-            getStreamingAvailability(title, res);
-        } else if (reqUrl.pathname.startsWith('/movies/data/') && req.method === 'GET') {
-            const imdbId = reqUrl.pathname.split('/').pop();
-            getMovieReview(imdbId, res);  
-        } else if (reqUrl.pathname.startsWith('/posters/') && req.method === 'GET') {
-            const imdbId = reqUrl.pathname.split('/').pop();
-            getPoster(res, imdbId);
-        } else if (reqUrl.pathname.startsWith('/posters/add/') && req.method === 'POST') {
-            const imdbId = reqUrl.pathname.split('/').pop();
-            console.log("Received request to upload poster for IMDb ID:", imdbId);
-            uploadPoster(req, res, imdbId);
-        } else {
-            res.statusCode = 404;
-            res.end(JSON.stringify({ message: 'Endpoint not found' }));
-        }
-    });
-    
+            "Access-Control-Allow-Methods": "OPTIONS, GET, POST",
+            "Access-Control-Allow-Headers": "Content-Type"
+        });
+        return res.end();
+    }
 
-// Listen on port 5000
+    // Routing logic (GET/POST requests)
+    if (reqUrl.pathname === '/movies/search' && req.method === 'GET') {
+        const title = reqUrl.query.title;
+        getStreamingAvailability(title, res);
+    } else if (reqUrl.pathname === '/movies/data' && req.method === 'GET') {
+        const imdbId = reqUrl.query.id;
+        getMovieReview(imdbId, res);
+    } else if (reqUrl.pathname.startsWith('/posters/') && req.method === 'GET') {
+        const imdbId = reqUrl.pathname.split('/').pop(); // Extract IMDb ID from URL
+        console.log("Received IMDb ID:", imdbId);
+        getPoster(res, imdbId);
+    } else if (reqUrl.pathname.startsWith('/posters/add/') && req.method === 'POST') {
+        const imdbId = reqUrl.pathname.split('/').pop(); // Extract IMDb ID from URL
+        console.log("Received request to upload poster for IMDb ID:", imdbId);
+        uploadPoster(req, res, imdbId);
+    } else {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ message: 'Endpoint not found' }));
+    }
+});
+
 server.listen(5000, () => {
     console.log('Server is listening on port 5000');
 });
 
+
+async function getPoster(res, imdbId) {
+    try {
+        // Validate IMDb ID format (e.g., tt1234567)
+        if (!/^tt\d{7}$/.test(imdbId)) {
+            res.statusCode = 400;
+            return res.end(JSON.stringify({ error: true, message: 'Invalid IMDb ID format. Must be like tt1234567.' }));
+        }
+
+        console.log(`Fetching poster for IMDb ID: ${imdbId}`);
+
+        // Fetch movie details from OMDb API using the IMDb ID
+        const omdbResponse = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
+        
+        // Check if OMDb returned a valid response
+        if (omdbResponse.data.Response === "False") {
+            res.statusCode = 404;
+            return res.end(JSON.stringify({ error: true, message: 'Movie not found or invalid IMDb ID.' }));
+        }
+
+        // Extract the poster URL from the OMDb response
+        const posterUrl = omdbResponse.data.Poster;
+        if (!posterUrl || posterUrl === 'N/A') {
+            res.statusCode = 404;
+            return res.end(JSON.stringify({ error: true, message: 'Poster not available for this IMDb ID.' }));
+        }
+
+        console.log(`Poster URL: ${posterUrl}`);
+
+        // Fetch the poster image from the URL
+        const imageResponse = await axios.get(posterUrl, { responseType: 'arraybuffer' });
+
+        // Check if we successfully fetched the image
+        if (imageResponse.status !== 200) {
+            res.statusCode = 500;
+            return res.end(JSON.stringify({ error: true, message: 'Failed to fetch the poster image.' }));
+        }
+
+        // Set the correct content type based on the image format
+        const contentType = imageResponse.headers['content-type'] || 'image/jpeg'; // Default to JPEG if not available
+
+        // Set the response headers and send the image data
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(imageResponse.data);
+
+    } catch (error) {
+        console.error('Error fetching poster:', error.message);
+        if (error.response) {
+            console.error('Error response:', error.response.data);
+        }
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: true, message: 'Failed to fetch the poster.' }));
+    }
+}
 // Function to get movie review from OMDb API
 async function getMovieReview(imdbId, res) {
     try {
@@ -88,42 +145,48 @@ async function getStreamingAvailability(title, res) {
 }
 
 // Function to upload a poster
-async function getPoster(res, imdbId) {
-    try {
-        // Validate IMDb ID format
-        if (!/^tt\d{7}$/.test(imdbId)) {
-            res.statusCode = 400;
-            return res.end(JSON.stringify({ error: true, message: 'Invalid IMDb ID format. Must be like tt1234567.' }));
-        }
+// async function getPoster(res, imdbId) {
+//     try {
+//         if (!/^tt\d{7}$/.test(imdbId)) {
+//             res.statusCode = 400;
+//             return res.end(JSON.stringify({ error: true, message: 'Invalid IMDb ID format. Must be like tt1234567.' }));
+//         }
 
-        console.log(`Fetching poster for IMDb ID: ${imdbId}`);
+//         console.log(`Fetching poster for IMDb ID: ${imdbId}`);
 
-        // Fetch movie details from OMDb API
-        const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
+//         // Fetch movie details from OMDb API
+//         const response = await axios.get(`http://www.omdbapi.com/?i=${imdbId}&apikey=${OMDB_API_KEY}`);
+//         console.log('OMDb API Response:', response.data);
 
-        // Check if a poster URL is available
-        const posterUrl = response.data.Poster;
-        if (!posterUrl || posterUrl === 'N/A') {
-            res.statusCode = 404;
-            return res.end(JSON.stringify({ error: true, message: 'Poster not available for this IMDb ID.' }));
-        }
+//         // Check if a poster URL is available
+//         const posterUrl = response.data.Poster;
+//         if (!posterUrl || posterUrl === 'N/A') {
+//             res.statusCode = 404;
+//             return res.end(JSON.stringify({ error: true, message: 'Poster not available for this IMDb ID.' }));
+//         }
 
-        console.log(`Poster URL: ${posterUrl}`);
+//         console.log(`Poster URL found: ${posterUrl}`);
 
-        // Fetch the poster image from the poster URL
-        const imageResponse = await axios.get(posterUrl, { responseType: 'stream' });
+//         // Fetch the poster image from the poster URL
+//         const imageResponse = await axios.get(posterUrl, { responseType: 'arraybuffer' });
+//         console.log('Image Response Headers:', imageResponse.headers);
 
-        // Set the appropriate headers and pipe the image to the response
-        res.writeHead(200, { 'Content-Type': 'image/png' });
-        imageResponse.data.pipe(res);
+//         // Determine the image content type
+//         const contentType = imageResponse.headers['content-type'] || 'image/jpeg'; // Default to 'image/jpeg' if not specified
 
-    } catch (error) {
-        console.error('Error fetching poster:', error.message);
-        res.statusCode = 500;
-        res.end(JSON.stringify({ error: true, message: 'Failed to fetch the poster.' }));
-    }
-}
+//         // Send the image as the response
+//         res.writeHead(200, { 'Content-Type': contentType });
+//         res.end(imageResponse.data);
 
+//     } catch (error) {
+//         console.error('Error fetching poster:', error.message);
+//         if (error.response) {
+//             console.error('Error Response:', error.response.data);
+//         }
+//         res.statusCode = 500;
+//         res.end(JSON.stringify({ error: true, message: 'Failed to fetch the poster.' }));
+//     }
+// }
 
 async function uploadPoster(req, res, imdbId) {
     console.log("Received request to upload poster for IMDb ID:", imdbId);
