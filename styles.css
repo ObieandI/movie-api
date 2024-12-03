@@ -1,3 +1,4 @@
+/* Apply styling to the page */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
@@ -56,8 +57,11 @@ pre {
     font-size: 14px;
 }
 
-#posterImage {
-    max-width: 300px;
+img {
+    max-width: 60% !important;
+    height: auto;
     display: block;
-    margin-top: 10px;
+    margin: 20px auto;
+    border-radius: 10px;
+    overflow: none !important;
 }
